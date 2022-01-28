@@ -1,0 +1,291 @@
+﻿@page "/operation"
+@inject OperationUseCase OperationUseCase
+@inject NavigationManager navigationManger
+
+@using System.IO
+@using Microsoft.AspNetCore.Http;
+
+<h3>Manage Operations</h3>
+<hr />
+
+<button class="btn-primary" @onclick="showAdd">Add Operation</button>
+
+@if (popup)
+{
+
+
+    <div class="modal" tabindex="-1" role="dialog" style="display:block;">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Operation</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="closepopup">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <EditForm Model="operation" class="form-inline" OnValidSubmit="AddOperation">
+                    <DataAnnotationsValidator></DataAnnotationsValidator>
+                    <ValidationSummary></ValidationSummary>
+
+
+                    <div class="form-group">
+                        <label for="Name">Name</label>
+                        <InputText id="Name" @bind-Value="operation.Name" class="form-control"></InputText>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="orderInWhichToPerform">orderInWhichToPerform</label>
+                        <InputNumber id="orderInWhichToPerform" @bind-Value="operation.OrderInWhichToPerform" class="form-control"></InputNumber>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="deviceName">Device Name</label>
+                        <InputText id="deviceName" @bind-Value="device.Name" class="form-control"></InputText>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Device Type</label>
+                        <InputSelect @bind-Value="device.DeviceType" class="form-control">
+
+                            @foreach (var value in Enum.GetValues(typeof(DeviceType)))
+                                {
+                                <option>@value</option>
+                                }
+                            /**/
+
+
+
+                        </InputSelect>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ImageData">Select a file:</label>
+                        <input type="file" id="ImageData" @bind-value="operation.ImageData" name="ImageData">
+                    </div>
+
+
+
+                    <button type="submit" class="btn-primary">Save</button>
+
+                   
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="closepopup">Close</button>
+                </EditForm>
+                
+                
+            </div>
+        </div>
+    </div>
+}
+
+
+
+
+@if (popupp)
+{
+
+
+<div class="modal" tabindex="-1" role="dialog" style="display:block;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Operation</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="closeEdit">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <EditForm Model="operation" class="form-inline" OnValidSubmit="EditOperation">
+                <DataAnnotationsValidator></DataAnnotationsValidator>
+                <ValidationSummary></ValidationSummary>
+
+
+                <div class="form-group">
+                    <label for="Name">Name</label>
+                    <InputText id="Name" @bind-Value="operation.Name" class="form-control"></InputText>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="orderInWhichToPerform">Order In Which To Perform</label>
+                    <InputNumber id="orderInWhichToPerform" @bind-Value="operation.OrderInWhichToPerform" class="form-control"></InputNumber>
+                </div>
+
+                <div class="form-group">
+                    <label for="deviceName">Device Name</label>
+                    <InputText id="deviceName" @bind-Value="device.Name" class="form-control"></InputText>
+                </div>
+
+                <div class="form-group">
+                    <label>Device Type</label>
+                    <InputSelect @bind-Value="device.DeviceType" class="form-control">
+
+                        @foreach (var value in Enum.GetValues(typeof(DeviceType)))
+                            {
+                            <option>@value</option>
+                            }
+                     
+                    </InputSelect>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="ImageData">Select a file:</label>
+                    <input type="file" id="ImageData" onchange="upload()" name="ImageData">
+                </div>
+
+
+                <button type="submit" class="btn btn-primary">Save changes</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="closeEdit">Close</button>
+            </EditForm>
+          
+       
+           
+        </div>
+        </div>
+    </div>
+    }
+
+    @if (operations != null)
+    {
+        <table class="table table-bordered table-dark">
+            <thead>
+                <tr>
+
+                    <th>
+                        Name
+                    </th>
+                    <th>
+                        Order
+                    </th>
+                    <th>
+                        Image
+                    </th>
+                    <th>
+                        Device Name
+                    </th>
+                    <th>
+                        Device Type
+                    </th>
+                    <th>
+                    </th>
+
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var operation in operations)
+                {
+                    <tr>
+                        <td>@operation.Name</td>
+                        <td>@operation.OrderInWhichToPerform</td>
+                        <td>@operation.ImageData</td>
+                        <td>@operation.device.Name</td>
+                        <td>@operation.device.DeviceType</td>
+                        <td><button type="button" @onclick="@(()=>DeleteOperation(operation.OperationID))" class="btn btn-link">Remove</button> /  <button type="button" @onclick="showdevice" class="btn btn-link">Edit</button></td>
+
+                    </tr>
+                }
+            </tbody>
+
+
+        </table>
+    }
+
+
+
+    @code {
+
+        private List<Operation> operations;
+        bool popup = false;
+        bool popupp = false;
+
+        Operation operation = new Operation();
+        Device device = new Device();
+        [Parameter]
+        public string OperationID { get; set; }
+        IFormFile file;
+
+        async Task upload(IFormFile file)
+        {
+            await Task.Run(() =>
+            {
+                if (file.Length > 0)
+                {
+                    using (var ms = new MemoryStream())
+                    {
+                        file.CopyTo(ms);
+                        var fileBytes = ms.ToArray();
+                        //string s = Convert.ToBase64String(fileBytes);
+
+                        operation.ImageData = fileBytes;
+                    }
+                }
+            });
+        }
+
+
+
+        void showAdd()
+        {
+            popup = true;
+        }
+
+        void showdevice()
+        {
+            popupp = true;
+        }
+
+        void closepopup()
+        {
+            popup = false;
+        }
+        void closeEdit()
+        {
+            popupp = false;
+        }
+
+
+        private void AddOperation()
+        {
+            OperationUseCase.AddOperation(operation, device);
+
+            closepopup();
+            navigationManger.NavigateTo("/operation");
+            this.operations = OperationUseCase.GetOperations();
+
+        }
+
+        protected override void OnInitialized()
+        {
+            base.OnInitialized();
+            operations = OperationUseCase.GetOperations();
+        }
+
+        private void DeleteOperation(int OperationId)
+        {
+            OperationUseCase.DeleteOperation(OperationId);
+        }
+
+
+
+        protected override void OnParametersSet()
+        {
+            base.OnParametersSet();
+            if (int.TryParse(this.OperationID, out int iOperationID))
+            {
+                this.operation = OperationUseCase.GetOperationById(iOperationID);
+            }
+
+        }
+
+        private void EditOperation()
+        {
+
+            OperationUseCase.UpdateOperation(this.operation,device);
+            closeEdit();
+            navigationManger.NavigateTo("/operation");
+            this.operations = OperationUseCase.GetOperations();
+
+        }
+
+    }
